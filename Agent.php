@@ -34,6 +34,11 @@ class Agent
 		return $output;
 	}
 
+	public function getIpAddress()
+	{
+		return '127.0.0.1';
+	}
+
 	public function getProcessorInfo()
 	{
 		return $this->executeCommand('lscpu');
