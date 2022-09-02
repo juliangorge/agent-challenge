@@ -36,17 +36,21 @@ class Agent
 
 	public function getIpAddress()
 	{
-		return '127.0.0.1';
+		$command = $this->executeCommand('dig TXT +short o-o.myaddr.l.google.com @ns1.google.com');
+
+		return str_replace('"','', $command[0]);
 	}
 
 	public function getProcessorInfo()
 	{
-		return $this->executeCommand('lscpu');
+		$command = $this->executeCommand('lscpu');
+		return json_encode($command);
 	}
 
 	public function getRunningProcesses()
 	{
-		return $this->executeCommand('ps -f -u www-data 2>&1');
+		$command = $this->executeCommand('ps -a');
+		return json_encode($command);
 	}
 
 	public function getLoggedInUsers()
@@ -60,17 +64,19 @@ class Agent
 			$users[] = $line[0];
 		}
 
-		return $users;
+		return json_encode($users);
 	}
 
 	public function getOSName()
 	{
-		return $this->executeCommand('hostnamectl');
+		$command = $this->executeCommand('uname -mrs');
+		return json_encode($command);
 	}
 
 	public function getOSVersion()
 	{
-		return $this->executeCommand('uname -v');
+		$command = $this->executeCommand('uname -v');
+		return json_encode($command);
 	}
 
 	private function getToken()
@@ -124,9 +130,17 @@ class Agent
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
 		$response = curl_exec($ch);
-		
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
 		curl_close($ch);
 
+		if($http_code != 201)
+		{
+			print_r(json_decode($response));
+			return;
+		}
+
+		echo 'Successful!' . PHP_EOL;
 		return;
 	}
 
