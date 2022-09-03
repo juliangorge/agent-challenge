@@ -49,7 +49,7 @@ class Agent
 
 	public function getRunningProcesses()
 	{
-		$command = $this->executeCommand('ps -a');
+		$command = $this->executeCommand('ps -aux');
 		return json_encode($command);
 	}
 
