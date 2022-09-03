@@ -3,7 +3,7 @@
 class Agent 
 {
 
-	protected $apiURL = 'https://mp.juliangorge.com.ar'; //'http://127.0.0.1';
+	protected $apiURL = 'https://mp.juliangorge.com.ar';
 	protected $credentials;
 	protected $usageMode;
 
@@ -157,7 +157,7 @@ class Agent
 
 		curl_close($ch);
 
-		if($response == false) exit('An error has ocurred');
+		if($response == false) exit('An error has ocurred: ' . $endpointUrl . PHP_EOL);
 
 		return [
 			'http_code' => $http_code,
