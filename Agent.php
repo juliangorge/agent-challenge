@@ -97,7 +97,7 @@ class Agent
 	public function post($token)
 	{
 		$curl = $this->execCurl(
-			$this->apiUrl . '/reports', 
+			$this->apiURL . '/reports', 
 			true, 
 			['Authorization: Bearer ' . $token->access_token], 
 			[
