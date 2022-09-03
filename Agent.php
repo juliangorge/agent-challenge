@@ -1,31 +1,24 @@
 <?php 
 
-/*
-Agente:
-Obtiene la siguiente información y la envía hacia un endpoint
-
-- Información sobre el procesador.
-- Listado de procesos corriendo.
-- Usuarios con una sesión abierta en el sistema.
-- Nombre del sistema operativo.
-- Versión del sistema operativo.
-*/
-
 class Agent 
 {
 
 	protected $apiURL = 'https://mp.juliangorge.com.ar'; //'http://127.0.0.1';
 	protected $credentials;
+	protected $usageMode;
 
-	public function __construct(string $username, string $password)
+	// Inicializa Agente con las credenciales y usageMode (0 = POST, 1 = GET)
+	public function __construct(string $username, string $password, bool $usageMode)
 	{
 		print_r('Starting Agent' . PHP_EOL);
 		$this->credentials = [
 			'username' => $username,
 			'password' => $password
 		];
+		$this->usageMode = $usageMode;
 	}
 
+	// Retorna los resultados de la ejecución de comandos de terminal
 	private function executeCommand(string $command)
 	{
 		$output = '';
@@ -79,68 +72,112 @@ class Agent
 		return json_encode($command);
 	}
 
+	// Obtiene el token y lo retorna si es válido, sino termina el script.
 	private function getToken()
 	{
-		$ch = curl_init();
+		$curl = $this->execCurl(
+			$this->apiURL . '/oauth', 
+			true, 
+			['Authorization: Basic '. base64_encode($this->credentials['username'] . ':' . $this->credentials['password'])],
+			[
+				'grant_type' => 'password',
+				'username' => $this->credentials['username'],
+				'password' => $this->credentials['password']
+			]
+		);
 
-		curl_setopt($ch, CURLOPT_URL, $this->apiURL . '/oauth');
-		curl_setopt($ch, CURLOPT_HTTPHEADER, [
-			'Authorization: Basic '. base64_encode($this->credentials['username'] . ':' . $this->credentials['password'])
-		]);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, true);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, [
-			'grant_type' => 'password',
-			'username' => $this->credentials['username'],
-			'password' => $this->credentials['password']
-		]);
+		$response = json_decode($curl['response']);
 
-		$response = curl_exec($ch);
-		curl_close($ch);
+		if(isset($response->detail)) exit($response->detail);
 
-		if($response == false) exit('An error has ocurred');
-
-		$decoded_response = json_decode($response);
-
-		if(isset($decoded_response->detail)) exit($decoded_response->detail);
-
-		return json_decode($response);
+		return $response;
 	}
 
-	public function init()
+	// Envía un método POST al Endpoint. Retorna un volcado si hubo un error. 
+	public function post($token)
 	{
-		$token = $this->getToken();
+		$curl = $this->execCurl(
+			$this->apiUrl . '/reports', 
+			true, 
+			['Authorization: Bearer ' . $token->access_token], 
+			[
+				'ip_address' => $this->getIpAddress(),
+				'logged_in_users' => $this->getLoggedInUsers(),
+				'running_processes' => $this->getRunningProcesses(),
+				'processor_info' => $this->getProcessorInfo(),
+				'os_name' => $this->getOSName(),
+				'os_version' => $this->getOSVersion(),
+			]
+		);
 
-		$post = [
-			'ip_address' => $this->getIpAddress(),
-			'logged_in_users' => $this->getLoggedInUsers(),
-			'running_processes' => $this->getRunningProcesses(),
-			'processor_info' => $this->getProcessorInfo(),
-			'os_name' => $this->getOSName(),
-			'os_version' => $this->getOSVersion(),
-		];
+		if($curl['http_code'] != 201)
+		{
+			print_r(json_decode($curl['response']));
+			return;
+		}
 
+		echo 'Successful!' . PHP_EOL;
+		return;
+	}
+
+	// Envía un método GET al Endpoint. Retorna su respuesta
+	public function get($token)
+	{
+		$curl = $this->execCurl(
+			$this->apiURL . '/reports',
+			false, 
+			['Authorization: Bearer ' . $token->access_token]
+		);
+
+		if($curl['http_code'] == 200)
+		{
+			echo 'Successful!' . PHP_EOL;
+		}
+
+		return json_decode($curl['response']);
+	}
+
+	// Función genérica para ejecutar la extensión cURL
+	// Recibe la URL de destino, si es un metodo POST o GET (POST = 0, GET = 1), las cabeceras y los campos POST
+	// Si es exitoso retorna el código y respuesta. Si hubo un error termina el script.
+	public function execCurl($endpointUrl = '', $isPost = false, $httpHeader = [], $postFields = [])
+	{
         $ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $this->apiURL . '/reports');
-		curl_setopt($ch, CURLOPT_HTTPHEADER, [
-			'Authorization: Bearer '. $token->access_token
-		]);
+		curl_setopt($ch, CURLOPT_URL, $endpointUrl);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $httpHeader);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, true);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+
+		if($isPost){
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+		}
 
 		$response = curl_exec($ch);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
 		curl_close($ch);
 
-		if($http_code != 201)
-		{
-			print_r(json_decode($response));
-			return;
-		}
+		if($response == false) exit('An error has ocurred');
 
-		echo 'Successful!' . PHP_EOL;
+		return [
+			'http_code' => $http_code,
+			'response' => $response
+		];
+	}
+
+	// Main function. Ejecuta la función get() y post() dependiendo del modo de uso.
+	public function init()
+	{
+		$token = $this->getToken();
+
+		if($this->usageMode)
+		{
+			$this->get($token);
+		}
+		else{
+			$this->post($token);
+		}
+		
 		return;
 	}
 
