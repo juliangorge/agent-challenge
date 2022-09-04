@@ -157,7 +157,7 @@ class Agent
 
 		curl_close($ch);
 
-		if($response == false) exit('An error has ocurred: ' . $endpointUrl . PHP_EOL);
+		if($response == false) exit('An error has occurred: ' . $endpointUrl . PHP_EOL);
 
 		return [
 			'http_code' => $http_code,
