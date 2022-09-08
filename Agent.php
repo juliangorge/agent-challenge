@@ -6,7 +6,7 @@ class Agent
 	protected $apiURL = 'https://mp.juliangorge.com.ar';
 	protected $credentials;
 	protected $usageMode;
-	#protected $cURLPort = 443;
+	protected $cURLPort = 443;
 
 	// Inicializa Agente con las credenciales y usageMode (0 = POST, 1 = GET)
 	public function __construct(string $username, string $password, bool $usageMode)
@@ -147,7 +147,7 @@ class Agent
 		curl_setopt($ch, CURLOPT_URL, $endpointUrl);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $httpHeader);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		#curl_setopt($ch, CURLOPT_PORT, $this->cURLPort);
+		curl_setopt($ch, CURLOPT_PORT, $this->cURLPort);
 
 		if($isPost){
 			curl_setopt($ch, CURLOPT_POST, true);
